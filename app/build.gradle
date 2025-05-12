@@ -23,12 +23,12 @@ android {
         versionName "1.0"
     }
 
-    buildTypes {
-        release {
-            minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-        }
-    }
+//    buildTypes {
+//        release {
+//            minifyEnabled false
+//            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+//        }
+//    }
 
     buildFeatures {
         aidl true
@@ -41,6 +41,11 @@ android {
     dataBinding {
         //noinspection DataBindingWithoutKapt
         enabled = true
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.debug
+        }
     }
 }
 

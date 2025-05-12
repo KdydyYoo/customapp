@@ -3,9 +3,11 @@ package com.example.customerlauncher.ui.main
 import WeatherThemeManager.getThemeForWeather
 import android.annotation.SuppressLint
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.PorterDuff
 import android.os.Build
@@ -147,10 +149,21 @@ class MainActivity : FragmentActivity() {
                 return true
             }
             KeyEvent.KEYCODE_5 ->{
-                val intent = Intent()
-                intent.component = ComponentName("com.example.posservice", "com.example.posservice.PoseService")
-                ContextCompat.startForegroundService(this, intent)
-                Toast.makeText(this, "PoseService 시작됨", Toast.LENGTH_SHORT).show()
+//                val intent = Intent()
+//                intent.component = ComponentName("com.example.posservice", "com.example.posservice.PoseService")
+//                ContextCompat.startForegroundService(this, intent)
+//                Toast.makeText(this, "PoseService 시작됨", Toast.LENGTH_SHORT).show()
+                startExternalPoseService()
+                Log.i("service", "service call")
+            }
+
+            KeyEvent.KEYCODE_6 ->{
+                stopExternalPoseService()
+                Log.i("service", "service stop call")
+            }
+            KeyEvent.KEYCODE_7 ->{
+                finish()
+                return true;
             }
             KeyEvent.KEYCODE_9 -> {
                 logTvChannels()
@@ -219,11 +232,24 @@ class MainActivity : FragmentActivity() {
                         val themeWithLed = getThemeForWeather(info.weatherId)
                         prefs.edit().putInt("selected_theme_code", info.weatherId).apply()
                         setWeatherTheme(themeWithLed.theme)
-                        ledService.setLedColor(
+
+                        val color = themeWithLed.ledColor
+
+                        if (color != null) {
+                            try {
+                                ledService.setLedColor(color.first, color.second, color.third)
+                            } catch (e: Exception) {
+                                Log.e("LED", "setLedColor 실패: $color", e)
+                            }
+                        } else {
+                            Log.w("LED", "ledColor가 null입니다: $themeWithLed")
+                        }
+
+                        /*ledService.setLedColor(
                             themeWithLed.ledColor.first,
                             themeWithLed.ledColor.second,
                             themeWithLed.ledColor.third
-                        )
+                        )*/
                         currentThemeIndex = themeCodes.indexOfFirst { code ->
                             info.weatherId in resolveWeatherCodeRange(code)
                         }.takeIf { it >= 0 } ?: 0  // fallback to 0
@@ -236,11 +262,23 @@ class MainActivity : FragmentActivity() {
                             getThemeForWeather(-1) // -1 or 0 or any code not matching predefined range
                         prefs.edit().putInt("selected_theme_code", -1).apply()
                         setWeatherTheme(themeWithLed.theme)
-                        ledService.setLedColor(
+                        val color = themeWithLed.ledColor
+
+                        if (color != null) {
+                            try {
+                                ledService.setLedColor(color.first, color.second, color.third)
+                            } catch (e: Exception) {
+                                Log.e("LED", "setLedColor 실패: $color", e)
+                            }
+                        } else {
+                            Log.w("LED", "ledColor가 null입니다: $themeWithLed")
+                        }
+
+                        /*ledService.setLedColor(
                             themeWithLed.ledColor.first,
                             themeWithLed.ledColor.second,
                             themeWithLed.ledColor.third
-                        )
+                        )*/
                         currentThemeIndex = -1
                         updateWeatherCard(
                             info.copy(
@@ -501,12 +539,84 @@ class MainActivity : FragmentActivity() {
             Log.d("TEST", themeWithLed.name)
             prefs.edit().putInt("selected_theme_code", weatherCode).apply()
             Log.d("TEST" , prefs.getInt("selected_theme_code", 800).toString())
-            ledService.setLedColor(
-                themeWithLed.ledColor.first,
-                themeWithLed.ledColor.second,
-                themeWithLed.ledColor.third
+
+            val color = themeWithLed.ledColor
+
+            if (color != null) {
+                try {
+                    ledService.setLedColor(color.first, color.second, color.third)
+                } catch (e: Exception) {
+                    Log.e("LED", "setLedColor 실패: $color", e)
+                }
+            } else {
+                Log.w("LED", "ledColor가 null입니다: $themeWithLed")
+            }
+
+
+//            ledService.setLedColor(
+//                themeWithLed.ledColor.first,
+//                themeWithLed.ledColor.second,
+//                themeWithLed.ledColor.third
+//            )
+        }
+    }
+    private fun startExternalPoseService() {
+        val intent = Intent().apply {
+            component = ComponentName(
+                "com.example.cameraapplication",                  // 서비스가 들어 있는 앱의 패키지명
+                "com.example.posservice.PoseService"       // 서비스 클래스의 전체 경로
             )
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
         }
     }
 
+
+    private fun stopExternalPoseService() {
+        val intent = Intent().apply {
+            component = ComponentName(
+                "com.example.cameraapplication",
+                "com.example.posservice.PoseService"
+            )
+        }
+        stopService(intent)
+    }
+    override fun onDestroy() {
+        super.onDestroy()
+        stopExternalPoseService();
+        Log.d("MainActivity", "onDestroy: PoseService 중단됨")
+    }
+    private val poseGestureReceiver = object : BroadcastReceiver() {
+        @RequiresApi(Build.VERSION_CODES.N)
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == "com.example.ACTION_LEFT_HAND_UP") {
+                Log.d("MainActivity", "왼손 제스처 감지됨 → 테마 체인지 함수 호출")
+                cycleToNextWeatherTheme()
+            }
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    @SuppressLint("UnspecifiedRegisterReceiverFlag")
+    override fun onResume() {
+        super.onResume()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(
+                poseGestureReceiver,
+                IntentFilter("com.example.ACTION_LEFT_HAND_UP"),
+                Context.RECEIVER_EXPORTED
+            )
+        } else {
+            registerReceiver(poseGestureReceiver, IntentFilter("com.example.ACTION_LEFT_HAND_UP"))
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        unregisterReceiver(poseGestureReceiver)
+    }
 }
