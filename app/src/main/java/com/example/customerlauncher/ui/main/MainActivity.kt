@@ -155,11 +155,14 @@ class MainActivity : FragmentActivity() {
 //                Toast.makeText(this, "PoseService 시작됨", Toast.LENGTH_SHORT).show()
                 startExternalPoseService()
                 Log.i("service", "service call")
+                Toast.makeText(this, "PoseService 시작됨", Toast.LENGTH_LONG).show()
             }
 
             KeyEvent.KEYCODE_6 ->{
                 stopExternalPoseService()
                 Log.i("service", "service stop call")
+                Toast.makeText(this, "PoseService 종료됨", Toast.LENGTH_LONG).show()
+
             }
             KeyEvent.KEYCODE_7 ->{
                 finish()
@@ -593,27 +596,52 @@ class MainActivity : FragmentActivity() {
     private val poseGestureReceiver = object : BroadcastReceiver() {
         @RequiresApi(Build.VERSION_CODES.N)
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == "com.example.ACTION_LEFT_HAND_UP") {
-                Log.d("MainActivity", "왼손 제스처 감지됨 → 테마 체인지 함수 호출")
-                cycleToNextWeatherTheme()
+            if (intent?.action == "com.example.ACTION_GESTURE") {
+                val gestureType = intent.getIntExtra("gesture_type", -1)
+                when (gestureType) {
+                    1 -> {
+                        Log.d("MainActivity", "왼손 감지 → 테마 변경")
+                        cycleToNextWeatherTheme()
+                        context?.let {
+                            Toast.makeText(it, "왼손 감지, 테마 변경", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    2 -> {
+                        Log.d("MainActivity", "오른손 감지 → 볼륨 낮춤 ")
+                        context?.let {
+                            Toast.makeText(it, "오른손 감지, 볼륨 DOWN", Toast.LENGTH_LONG).show()
+                        }                    }
+                    3 -> {
+                        Log.d("MainActivity", "양손 감지 → 볼륨 높임 ")
+                        context?.let {
+                            Toast.makeText(it, "양손 감지, 볼륨 UP", Toast.LENGTH_LONG).show()
+                        }                    }
+                    else -> {
+                        Log.w("MainActivity", "알 수 없는 제스처 수신: $gestureType")
+                    }
+                }
             }
         }
     }
+
 
     @RequiresApi(Build.VERSION_CODES.O)
     @SuppressLint("UnspecifiedRegisterReceiverFlag")
     override fun onResume() {
         super.onResume()
+        val filter = IntentFilter("com.example.ACTION_GESTURE")
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(
                 poseGestureReceiver,
-                IntentFilter("com.example.ACTION_LEFT_HAND_UP"),
+                filter,
                 Context.RECEIVER_EXPORTED
             )
         } else {
-            registerReceiver(poseGestureReceiver, IntentFilter("com.example.ACTION_LEFT_HAND_UP"))
+            registerReceiver(poseGestureReceiver, filter)
         }
     }
+
 
     override fun onPause() {
         super.onPause()
