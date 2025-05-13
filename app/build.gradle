@@ -4,7 +4,15 @@ plugins {
 }
 
 android {
+    signingConfigs {
+        Vodafone {
+            storeFile file('C:\\Users\\k250304\\Desktop\\platform 5.jks')
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+            storePassword 'android'
+        }
 
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -23,12 +31,13 @@ android {
         versionName "1.0"
     }
 
-//    buildTypes {
-//        release {
-//            minifyEnabled false
-//            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-//        }
-//    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.Vodafone
+        }
+    }
 
     buildFeatures {
         aidl true
@@ -42,11 +51,11 @@ android {
         //noinspection DataBindingWithoutKapt
         enabled = true
     }
-    buildTypes {
-        release {
-            signingConfig signingConfigs.debug
-        }
-    }
+//    buildTypes {
+//        release {
+//            signingConfig signingConfigs.debug
+//        }
+//    }
 }
 
 dependencies {
